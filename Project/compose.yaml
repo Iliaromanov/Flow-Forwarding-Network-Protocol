@@ -1,0 +1,55 @@
+# Defines a small topology of 3 routers, 5 networks and 2 endpoints
+# docker compose -f compose.yaml --profile routers up -d
+# docker compose -f compose.yaml --profile endpoints --profile routers up -d
+# docker compose -f compose.yaml --profile routers --profile endpoints down -t 1
+services:
+  # try broadcast from router1 to router2 and 3
+  router2:
+    profiles: ["routers"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/compnets
+    command: python3 listen.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router2
+    networks:
+      - stub1
+
+  router3:
+    profiles: ["routers"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/compnets
+    command: python3 listen.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router3
+    networks:
+      - stub1
+      
+  router1:
+    profiles: ["routers"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/compnets
+    command: python3 broadcast.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router1
+    networks:
+      - stub1
+
+# 2 Stub networks and 3 transient networks
+networks:
+  stub1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.0.0/24
