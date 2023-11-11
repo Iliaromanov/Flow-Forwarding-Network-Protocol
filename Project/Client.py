@@ -14,6 +14,23 @@ class Client(FlowForwardingProtocolSocketBase):
         self._edge_router_ip = None
         self._attach_to_edge_router()
 
+    def send_to(self, dest: str, path_to_data: str = "") -> None:
+        dest = dest.replace(":", "").lower()
+
+        header = {
+            util.PacketDataKey.PACKET_TYPE: util.PacketType.FWD_REQUEST,
+            util.PacketDataKey.DEST_ADDR: dest
+        }
+
+        if path_to_data != "":
+            # handle this later
+            pass
+
+        self.send(
+            header_data=header, 
+            target_ip=self._edge_router_ip, target_port=util.LISTEN_PORT
+        )
+
     def _attach_to_edge_router(self) -> None:
         # returns addr of edge router
         header = {
@@ -41,6 +58,43 @@ class Client(FlowForwardingProtocolSocketBase):
             self.close_sockets()
             exit()
 
+    def _handle_fwd_request(self, dest: str, body: str) -> None:
+        if dest != self.addr:
+            util.Logger.info("Accidental broadcast; ignoring")
+            return
+        
+        # this client is the destination of a request from another client
+        util.Logger.info(f"Request from other client has reached its destination!")
+        util.Logger.info(f"Received request body: {body}")
+        
+        # reply to edge router
+        header = {
+            util.PacketDataKey.PACKET_TYPE: util.PacketType.FWD_REPLY,
+            util.PacketDataKey.DEST_ADDR: self.addr,
+            util.PacketDataKey.HOP_COUNT: 1
+        }
+
+        # reply will contain the path to this client in body once it arrives at
+        #  sending client
+        response_body = f"{self.addr},{self._edge_router_ip}"
+
+        self.send(
+            header_data=header, 
+            target_ip=self._edge_router_ip,
+            target_port=util.LISTEN_PORT,
+            payload=response_body.encode() 
+        )
+
+    def _handle_reply(self, dest: str, body: str) -> None:
+        util.Logger.info(
+            f"Received reply for dest: {dest}!"
+        )
+        path_to_dest = " -> ".join(body.split(",")[::-1])
+        util.Logger.info(
+            f"The path to dest={dest}, is {path_to_dest}"
+        )
+
+
     def handle_received_message(
         self, parsed_packet: Dict[util.PacketDataKey, Any], sender_addr: Tuple[str, int]
     ) -> None:
@@ -50,10 +104,18 @@ class Client(FlowForwardingProtocolSocketBase):
             case util.PacketType.FWD_REQUEST.value:
                 # could be direct msg from router
                 #  or accidental broadcast (ignore latter)
-                pass
+                util.Logger.info(
+                    f"Received fwd request packet from {sender_addr[0]}"
+                )
+                self._handle_fwd_request(
+                    parsed_packet[util.PacketDataKey.DEST_ADDR],
+                    parsed_packet[util.PacketDataKey.BODY]
+                )
             case util.PacketType.FWD_REPLY.value:
-                # could be 
-                pass
+                self._handle_reply(
+                    parsed_packet[util.PacketDataKey.DEST_ADDR],
+                    parsed_packet[util.PacketDataKey.BODY]
+                )
             case _:
                 util.Logger.error(
                     f"Client received invalid message type: {packet_type}"

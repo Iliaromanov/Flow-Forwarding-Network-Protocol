@@ -9,13 +9,9 @@ def main():
     client = Client(addr)
     print("Client endpoint initialized and listening ...")
     print("cmd:")
-    print( # the ping should result in the path to destination endpoint being returned
-        f"- {util.Commands.SEND_PING.value} [dest] - \
-        send a ping request to endpoint with ID 'dest'"
-    )
     print(
-        f"- {util.Commands.SEND_DATA.value} [dest] [path_to_data] - \
-        send data located at 'path_to_data' to endpoint with ID 'dest'"
+        f"- {util.Commands.SEND.value} [dest] Optional[path_to_data] - " + \
+        "send data located at 'path_to_data' to endpoint with ID 'dest'"
     )
     print(f"- {util.Commands.EXIT.value} - end program")
 
@@ -24,13 +20,12 @@ def main():
         cmd = input(f"Client - {addr} - waiting on input ...\n> ").split()
 
         match cmd[0]:
-            case util.Commands.SEND_PING:
+            case util.Commands.SEND:
                 dest = cmd[1]
-                
-            case util.Commands.SEND_DATA:
-                dest = cmd[1]
-                path_to_data = cmd[2]
-
+                path_to_data = ""
+                if len(cmd) > 2:
+                    path_to_data = cmd[2]
+                client.send_to(dest, path_to_data)
             case util.Commands.EXIT:
                 client.clean_exit()
                 exit()
