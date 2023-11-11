@@ -23,3 +23,9 @@ udp_socket.sendto(
     (broadcast_address, broadcast_port)
 )
 print(f"Broadcasted message: '{message}'")
+
+message_direct = "this is direct message!"
+
+udp_socket.sendto(message_direct.encode(), ("router3", broadcast_port))
+
+print(f"sent direct message {message_direct}")
