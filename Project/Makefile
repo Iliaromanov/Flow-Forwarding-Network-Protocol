@@ -1,8 +1,8 @@
 up: 
-	docker compose -f compose.yaml --profile routers up -d
+	docker compose -f compose.yaml --profile routers --profile endpoints up -d
 
 down:
-	docker compose -f compose.yaml --profile routers down -t 1
+	docker compose -f compose.yaml --profile routers --profile endpoints down -t 1
 
 clean:
 	-@echo "Cleaning..."

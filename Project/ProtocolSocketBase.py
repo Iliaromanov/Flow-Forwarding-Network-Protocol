@@ -13,24 +13,31 @@ class FlowForwardingProtocolSocketBase(ABC):
         self._send_socket = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_DGRAM
         )
+        self._send_socket.bind((util.LOCAL_IP, util.SEND_PORT))
+        self._send_socket.setsockopt(
+            socket.SOL_SOCKET, socket.SO_BROADCAST, 1
+        )
 
         # socket for listening to incoming broadcasts, next hop fwd packets, and replies
         self._listen_socket = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_DGRAM
         )
-        self._listen_socket.bind((util.LOCAL_IP, util.FWD_REQUEST_PORT))
-        self._listen_socket.settimeout(listen_timeout)
+        self._listen_socket.bind((util.LOCAL_IP, util.LISTEN_PORT))
+
+        # set timeout for receives
+        # self._listen_socket.settimeout(listen_timeout)
 
         self.start_listen_thread()
 
     def send(
-        self, header_data: Dict[util.PacketData], 
+        self, header_data: Dict[util.PacketDataKey, Any], 
         target_ip: str, target_port: int, payload: bytearray = bytearray()
     ) -> None:
+        util.Logger.info(f"sending data to {target_ip}")
         header = self._create_header(
-            header_data.get(util.PacketData.PACKET_TYPE),
-            header_data.get(util.PacketData.DEST_ADDR, util.DEFAULT_DEST_ADDR),
-            header_data.get(util.PacketData.HOP_COUNT, 0)
+            header_data.get(util.PacketDataKey.PACKET_TYPE),
+            header_data.get(util.PacketDataKey.DEST_ADDR, util.DEFAULT_DEST_ADDR),
+            header_data.get(util.PacketDataKey.HOP_COUNT, 0)
         )
 
         data = header + payload
@@ -40,16 +47,17 @@ class FlowForwardingProtocolSocketBase(ABC):
         self._send_socket.sendto(data, (target_ip, target_port))
 
     def broadcast(
-        self, header_data: Dict[util.PacketData], payload: bytearray = bytearray()
+        self, header_data: Dict[util.PacketDataKey, Any], payload: bytearray = bytearray()
     ) -> None:
         self.send(
-            header_data, payload, 
-            util.BROADCAST_IP, util.FWD_REQUEST_PORT
+            header_data, 
+            util.BROADCAST_IP, util.LISTEN_PORT,
+            payload
         )
 
     def receive(
         self, receive_on_send_socket: bool = False, retry: int = 1
-    ) -> Union[bool, Tuple[Dict[util.PacketData, Any], Tuple[str, int]]]:
+    ) -> Tuple[bool, Tuple[Dict[util.PacketDataKey, Any], Tuple[str, int]]]:
         msg, addr = None, None
         if receive_on_send_socket:
             try:
@@ -61,7 +69,7 @@ class FlowForwardingProtocolSocketBase(ABC):
                         "retrying send socket recieve after timeout"
                     )
                     return self.receive(receive_on_send_socket, retry)
-                return False
+                return (False, dict(), tuple())
         else:
             try:
                 msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
@@ -72,9 +80,9 @@ class FlowForwardingProtocolSocketBase(ABC):
                         "retrying listen socket recieve after timeout"
                     )
                     return self.receive(receive_on_send_socket, retry)
-                return False 
+                return (False, dict(), tuple())
 
-        return (self._parse_packet(msg), addr)
+        return (True, self._parse_packet(msg), addr)
 
 
     def _listen(self) -> None:
@@ -106,7 +114,7 @@ class FlowForwardingProtocolSocketBase(ABC):
     
     @abstractmethod
     def handle_received_message(
-        self, parsed_packet: Dict[str, Any], sender_addr: Tuple[str, int]
+        self, parsed_packet: Dict[util.PacketDataKey, Any], sender_addr: Tuple[str, int]
     ) -> None:
         pass
         
@@ -114,11 +122,13 @@ class FlowForwardingProtocolSocketBase(ABC):
         # then have a switch / if statement to detrmine what packet type it is
         #  and what to do based on where this abstract method is implemented
 
+    @staticmethod
     def _addr_to_bytes(hex_address: str) -> bytes:
         # converts an endpoints address to bytes
         assert(len(hex_address) == 8) # must be of format aabbccdd
         return bytes.fromhex(hex_address)
 
+    @staticmethod
     def _hex_bytes_to_addr(hex_bytes: bytes) -> str:
         # converts the bytes of an addr to corresponding string
         assert(len(hex_bytes) == 4) # must be 4-byte addr
@@ -138,18 +148,24 @@ class FlowForwardingProtocolSocketBase(ABC):
 
         return header
     
-    def _parse_packet(self, payload: bytes) -> Dict[util.PacketData, Any]:
+    def _parse_packet(self, payload: bytes) -> Dict[util.PacketDataKey, Any]:
         # ASSUMING BODY WILL BE AN ENCODED STR (so only sending text)
         return {
-            util.PacketData.PACKET_TYPE: payload[0],
-            util.PacketData.DEST_ADDR: self._hex_bytes_to_addr(
+            util.PacketDataKey.PACKET_TYPE: payload[0],
+            util.PacketDataKey.DEST_ADDR: self._hex_bytes_to_addr(
                 payload[1:5]
             ),
-            util.PacketData.HOP_COUNT: payload[5],
-            util.PacketData.BODY: payload[6:].decode()
+            util.PacketDataKey.HOP_COUNT: payload[5],
+            util.PacketDataKey.BODY: payload[6:].decode()
         }
+    
+    def is_ping_msg(self, body: str) -> bool:
+        return body.startswith(util.PING_FLAG)
     
     def close_sockets(self) -> None:
         self._send_socket.close()
         self._listen_socket.close()
     
+    def clean_exit(self) -> None:
+        self.close_sockets()
+        self.stop_listen_thread()

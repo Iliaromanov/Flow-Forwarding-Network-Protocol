@@ -1,25 +1,41 @@
 from enum import Enum, auto
 
-LOCAL_IP         = "0.0.0.0"
-LOOP_BACK_IP     = "127.0.0.1" # IP addr for sending packet to self
-BROADCAST_IP     = "255.255.255.255"
-FWD_REQUEST_PORT = 8000 # listen for broadcasts on this
-REPLY_PORT       = 4000 # listen for replies to broadcasts on this
-BUFFER_SIZE      = 1024
-LISTEN_TIMEOUT   = 5    # every 5 seconds a listen would check if a request to kill thread was sent
+LOCAL_IP          = "0.0.0.0"
+LOOP_BACK_IP      = "127.0.0.1" # IP addr for sending packet to self
+BROADCAST_IP      = "255.255.255.255"
+DEFAULT_DEST_ADDR = "aaaaaaaa"
+PING_FLAG         = "\\ping" # if packet body starts with ping flag, then do ping op
+LISTEN_PORT       = 12345 # listen for broadcasts, replies on this
+SEND_PORT         = 54321 # port for when send_socket needs to listen (eg use for ACKs)
+BUFFER_SIZE       = 1024
+LISTEN_TIMEOUT    = 5    # every 5 seconds a listen would check if a request to kill thread was sent
 
 
 class PacketType(Enum):
-    ANNOUCE_ENDPOINT    = 0  # used for packet sent by new client to edge router on init
-    FWD_REQUEST         = 1  # can be used for both broadcast and known next hop packets
-    FWD_REPLY           = 2  # used as reply to broadcasted forward requests
+    ANNOUNCE_ENDPOINT     = 0  # used for packet sent by new client to edge router on init
+    ANNOUNCE_ENDPOINT_ACK = 1  # the edge router replies with this to let the client know router ip
+    FWD_REQUEST           = 2  # can be used for both broadcast and known next hop packets
+    FWD_REPLY             = 3  # used as reply to broadcasted forward requests
 
 
-class PacketData(Enum):
+class PacketDataKey(Enum):
     PACKET_TYPE = "packet_type"
     DEST_ADDR   = "dest_addr"
     HOP_COUNT   = "hop_count"
     BODY        = "body"
+
+
+class FwdTableKey(Enum):
+    NEXT_HOP  = auto()
+    HOP_COUNT = auto()
+    REQUESTER = auto()
+
+
+class Commands(Enum):
+    SEND_PING = "send_ping"
+    SEND_DATA = "send_data"
+
+    EXIT      = "exit"
 
 
 class Logger:

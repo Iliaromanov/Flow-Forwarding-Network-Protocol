@@ -3,11 +3,11 @@ services:
   # try broadcast from router1 to router2 and 3
   router2:
     profiles: ["routers"]
-    image: "pycimage"
+    image: "flowprotocolimage"
     build: .
     volumes:
       - .:/wrkdir
-    command: python3 Project/router_main.py
+    command: python3 router_main.py
     stdin_open: true
     tty: true
     environment:
@@ -18,11 +18,11 @@ services:
 
   router3:
     profiles: ["routers"]
-    image: "pycimage"
+    image: "flowprotocolimage"
     build: .
     volumes:
       - .:/wrkdir
-    command: python3 Project/router_main.py
+    command: python3 router_main.py
     stdin_open: true
     tty: true
     environment:
@@ -33,7 +33,7 @@ services:
       
   router1:
     profiles: ["routers"]
-    image: "pycimage"
+    image: "flowprotocolimage"
     build: .
     volumes:
       - .:/wrkdir
@@ -48,7 +48,7 @@ services:
 
   endpoint1:
     profiles: ["endpoints"]
-    image: "pycimage"
+    image: "flowprotocolimage"
     build: .
     volumes:
       - .:/wrkdir
@@ -62,11 +62,11 @@ services:
 
   endpoint2:
     profiles: ["endpoints"]
-    image: "pycimage"
+    image: "flowprotocolimage"
     build: .
     volumes:
       - .:/wrkdir
-    command: python3 Project/client_main.py
+    command: ["python3", "client_main.py", "DD:CC:BB:AA"]
     stdin_open: true
     tty: true
     environment:
