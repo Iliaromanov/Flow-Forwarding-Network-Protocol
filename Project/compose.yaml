@@ -1,7 +1,4 @@
-# Defines a small topology of 3 routers, 5 networks and 2 endpoints
-# docker compose -f compose.yaml --profile routers up -d
-# docker compose -f compose.yaml --profile endpoints --profile routers up -d
-# docker compose -f compose.yaml --profile routers --profile endpoints down -t 1
+
 services:
   # try broadcast from router1 to router2 and 3
   router2:
@@ -9,47 +6,98 @@ services:
     image: "pycimage"
     build: .
     volumes:
-      - .:/compnets
-    command: python3 listen.py
+      - .:/wrkdir
+    command: python3 Project/router_main.py
     stdin_open: true
     tty: true
     environment:
       HOSTNAME: router2
     networks:
-      - stub1
+      - edgenet2
+      - transnet2
 
   router3:
     profiles: ["routers"]
     image: "pycimage"
     build: .
     volumes:
-      - .:/compnets
-    command: python3 listen.py
+      - .:/wrkdir
+    command: python3 Project/router_main.py
     stdin_open: true
     tty: true
     environment:
       HOSTNAME: router3
     networks:
-      - stub1
+      - transnet1
+      - transnet2
       
   router1:
     profiles: ["routers"]
     image: "pycimage"
     build: .
     volumes:
-      - .:/compnets
-    command: python3 broadcast.py
+      - .:/wrkdir
+    command: /bin/bash # python3 Project/router_main.py
     stdin_open: true
     tty: true
     environment:
       HOSTNAME: router1
     networks:
-      - stub1
+      - transnet1
+      - edgenet1
+
+  endpoint1:
+    profiles: ["endpoints"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: /bin/bash # python3 Project/client_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint1
+    networks:
+      - edgenet1
+
+  endpoint2:
+    profiles: ["endpoints"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: python3 Project/client_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint2
+    networks:
+      - edgenet2
 
 # 2 Stub networks and 3 transient networks
 networks:
-  stub1:
+  edgenet1:
     ipam:
       driver: default
       config:
         - subnet: 192.168.0.0/24
+  edgenet2:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.10.0/24
+  transnet1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+  transnet2:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/24
+  transnet3:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/24

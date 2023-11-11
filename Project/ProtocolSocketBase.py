@@ -21,6 +21,8 @@ class FlowForwardingProtocolSocketBase(ABC):
         self._listen_socket.bind((util.LOCAL_IP, util.FWD_REQUEST_PORT))
         self._listen_socket.settimeout(listen_timeout)
 
+        self.start_listen_thread()
+
     def send(
         self, header_data: Dict[util.PacketData], 
         target_ip: str, target_port: int, payload: bytearray = bytearray()
@@ -60,9 +62,12 @@ class FlowForwardingProtocolSocketBase(ABC):
     def _listen(self) -> None:
         while self.listening:
             try:
+                util.Logger.info("listen_socket listening ...")
                 msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
             except socket.timeout:
-                
+                util.Logger.warning(
+                    "checking for thread stop; restarting receive after timeout"
+                )
                 # timeout to check if thread was asked to stop
                 continue
             self.handle_received_message(
