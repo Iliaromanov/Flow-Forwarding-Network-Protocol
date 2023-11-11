@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
 
 from ProtocolSocketBase import FlowForwardingProtocolSocketBase
 import util
@@ -8,7 +8,7 @@ class Router(FlowForwardingProtocolSocketBase):
         super().__init__()
         self._endpoint_id = None
         self._endpoint_ip = None
-        self._fwd_table: Dict[str, Dict[util.FwdTableKey, Union[int, str]]] = {}
+        self._fwd_table: Dict[str, Dict[util.FwdTableKey, Any]] = {}
 
     def _attach_endpoint(self, addr: str, endpoint_ip: str) -> None:
         self._endpoint = addr
@@ -22,17 +22,111 @@ class Router(FlowForwardingProtocolSocketBase):
 
         util.Logger.info(f"Attached endpoint {addr}")
 
-    def _handle_fwd_request(self, dest: str, requester_ip: str) -> None:
+    def _handle_fwd_request(self, dest: str, body: str, requesters_ip: str) -> None:
         # check if self._endpoint == dest
         # otherwise check fwd table (read note point at top of Implement Plan)
-        pass
+        util.Logger.info(f"received fwd request to {dest}")
+        
+        header = {
+            util.PacketDataKey.PACKET_TYPE: util.PacketType.FWD_REQUEST,
+            util.PacketDataKey.DEST_ADDR: dest
+        }
 
-    def _handle_fwd_reply(self, dest: str, hop_count: int, reply_ip: str) -> None:
-        # set reply_ip as next hop to dest if
-        #  self.fwd_table[util.FwdTableKey.HOP_COUNT] is None or \
-        #  self.fwd_table[util.FwdTableKey.HOP_COUNT] > hop_count
-        # then send the reply to self.fwd_table[util.FwdTableKey.REQUESTER]
-        pass
+        if self._endpoint == dest:
+            util.Logger.info(
+                f"Received fwd request to this Router's endpoint; " + \
+                "directly forwarding to endpoint"
+            )
+            self._fwd_table[dest] = {
+                util.FwdTableKey.NEXT_HOP: None,
+                util.FwdTableKey.HOP_COUNT: None,
+            }
+            if util.FwdTableKey.REQUESTERS in self._fwd_table[dest]:
+                self._fwd_table[dest][
+                    util.FwdTableKey.REQUESTERS
+                ].add(requesters_ip)
+            else:
+                self._fwd_table[dest][util.FwdTableKey.REQUESTERS] = set(
+                    requesters_ip
+                )
+            self.send(
+                header_data=header,
+                target_ip=self._endpoint_ip,
+                target_port=util.LISTEN_PORT,
+                payload=body.encode()
+            )
+        else:
+            if dest not in self._fwd_table:
+                # first time seeing this, need to broadcast to find path
+                util.Logger.info(f"{dest} not in fwd table")
+                self._fwd_table[dest] = {
+                    util.FwdTableKey.NEXT_HOP: None,
+                    util.FwdTableKey.HOP_COUNT: None,
+                    util.FwdTableKey.REQUESTERS: set(requesters_ip)
+                }
+                self.broadcast(header_data=header, payload=body.encode())
+            elif self._fwd_table[dest][util.FwdTableKey.NEXT_HOP] is None:
+                # this means already broadcasted for this dest
+                #  so to avoid circular broadcast, ignore
+                util.Logger.info(
+                    f"{dest} already in fwd table but unknown next hop;" + \
+                    " only adding to requesters array, but not broadcasting again"
+                )
+                self._fwd_table[dest][
+                    util.FwdTableKey.REQUESTERS
+                ].add(requesters_ip)
+            else:
+                # the path to dest is known through next hop in fwd table
+                util.Logger.info(
+                    f"Next Hop to {dest} is know through fwd table;" + \
+                    "sending directly"
+                )
+                self.send(
+                    header_data=header,
+                    target_ip=self._fwd_table[dest][util.FwdTableKey.NEXT_HOP],
+                    target_port=util.LISTEN_PORT,
+                    payload=body.encode()
+                )
+
+    def _handle_fwd_reply(
+        self, dest: str, hop_count: int, reply_body: str, reply_ip: str
+    ) -> None:
+        util.Logger.info(f"received reply for dest: {dest}")
+        # if received reply, the dest must be in fwd table
+        assert(dest in self._fwd_table)
+        assert(hop_count > 0) # zero means no hop count was sent
+
+        if self._fwd_table[dest][util.FwdTableKey.NEXT_HOP] is None or \
+           self.fwd_table[dest][util.FwdTableKey.HOP_COUNT] > hop_count:
+            util.Logger.info(
+                "updating forward table: " + \
+                f"hop_count={hop_count}, next_hop={reply_ip}"          
+            )
+            # update next hop and hop count
+            self._fwd_table[dest][util.FwdTableKey.HOP_COUNT] = hop_count
+            self._fwd_table[dest][util.FwdTableKey.NEXT_HOP] = reply_ip
+
+            # forward reply to all requesters
+            for requester in self._fwd_table[dest][util.FwdTableKey.REQUESTERS]:
+                header = {
+                    util.PacketDataKey.PACKET_TYPE: util.PacketType.FWD_REPLY,
+                    util.PacketDataKey.DEST_ADDR: dest,
+                    util.PacketDataKey.HOP_COUNT: hop_count + 1,
+                }
+                response_body = f"{reply_body},{requester}"
+                self.send(
+                    header_data=header,
+                    target_ip=requester,
+                    target_port=util.LISTEN_PORT,
+                    payload=response_body.encode()
+                )
+        else:
+            util.Logger.info(
+                f"A next_hop to {dest} with lesser hop_count " + \
+                f"({self._fwd_table[dest][util.FwdTableKey.NEXT_HOP]} < {hop_count})" + \
+                " exists in fwd table; ignoring this reply"          
+            )
+
     
     # all of this runs in the listen thread
     def handle_received_message(
@@ -59,6 +153,7 @@ class Router(FlowForwardingProtocolSocketBase):
                 )
                 self._handle_fwd_request(
                     parsed_packet[util.PacketDataKey.DEST_ADDR],
+                    parsed_packet[util.PacketDataKey.BODY],
                     sender_addr[0]
                 )
             case util.PacketType.FWD_REPLY.value:
@@ -71,6 +166,7 @@ class Router(FlowForwardingProtocolSocketBase):
                 self._handle_fwd_reply(
                     parsed_packet[util.PacketDataKey.DEST_ADDR],
                     int(parsed_packet[util.PacketDataKey.HOP_COUNT]),
+                    parsed_packet[util.PacketDataKey.BODY],
                     sender_addr[0]
                 )
             case _:

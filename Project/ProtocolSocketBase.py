@@ -159,9 +159,6 @@ class FlowForwardingProtocolSocketBase(ABC):
             util.PacketDataKey.BODY: payload[6:].decode()
         }
     
-    def is_ping_msg(self, body: str) -> bool:
-        return body.startswith(util.PING_FLAG)
-    
     def close_sockets(self) -> None:
         self._send_socket.close()
         self._listen_socket.close()
