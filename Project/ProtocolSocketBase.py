@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Union
 
 import socket
 from abc import ABC, abstractmethod
@@ -29,7 +29,7 @@ class FlowForwardingProtocolSocketBase(ABC):
     ) -> None:
         header = self._create_header(
             header_data.get(util.PacketData.PACKET_TYPE),
-            header_data.get(util.PacketData.DEST_ADDR),
+            header_data.get(util.PacketData.DEST_ADDR, util.DEFAULT_DEST_ADDR),
             header_data.get(util.PacketData.HOP_COUNT, 0)
         )
 
@@ -48,13 +48,31 @@ class FlowForwardingProtocolSocketBase(ABC):
         )
 
     def receive(
-        self, receive_on_send_socket: bool = False
-    ) -> Tuple[Dict[util.PacketData, Any], Tuple[str, int]]:
+        self, receive_on_send_socket: bool = False, retry: int = 1
+    ) -> Union[bool, Tuple[Dict[util.PacketData, Any], Tuple[str, int]]]:
         msg, addr = None, None
         if receive_on_send_socket:
-            msg, addr = self._send_socket.recvfrom(util.BUFFER_SIZE)
+            try:
+                msg, addr = self._send_socket.recvfrom(util.BUFFER_SIZE)
+            except socket.timeout:
+                retry -= 1
+                if retry > 0:
+                    util.Logger.warning(
+                        "retrying send socket recieve after timeout"
+                    )
+                    return self.receive(receive_on_send_socket, retry)
+                return False
         else:
-            msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
+            try:
+                msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
+            except socket.timeout:
+                retry -= 1
+                if retry > 0:
+                    util.Logger.warning(
+                        "retrying listen socket recieve after timeout"
+                    )
+                    return self.receive(receive_on_send_socket, retry)
+                return False 
 
         return (self._parse_packet(msg), addr)
 
@@ -130,4 +148,8 @@ class FlowForwardingProtocolSocketBase(ABC):
             util.PacketData.HOP_COUNT: payload[5],
             util.PacketData.BODY: payload[6:].decode()
         }
+    
+    def close_sockets(self) -> None:
+        self._send_socket.close()
+        self._listen_socket.close()
     
