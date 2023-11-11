@@ -28,13 +28,11 @@ class PacketDataKey(Enum):
 class FwdTableKey(Enum):
     NEXT_HOP  = auto()
     HOP_COUNT = auto()
-    REQUESTER = auto()
+    REQUESTERS = auto()
 
 
 class Commands(Enum):
-    SEND_PING = "send_ping"
-    SEND_DATA = "send_data"
-
+    SEND = "send_to"
     EXIT      = "exit"
 
 
