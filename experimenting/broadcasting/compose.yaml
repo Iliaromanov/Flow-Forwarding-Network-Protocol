@@ -31,6 +31,20 @@ services:
       HOSTNAME: router3
     networks:
       - stub1
+
+  router4:
+    profiles: ["routers"]
+    image: "pycimage"
+    build: .
+    volumes:
+      - .:/compnets
+    command: python3 listen.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router4
+    networks:
+      - bub1
       
   router1:
     profiles: ["routers"]
@@ -45,6 +59,7 @@ services:
       HOSTNAME: router1
     networks:
       - stub1
+      - bub1
 
 # 2 Stub networks and 3 transient networks
 networks:
@@ -53,3 +68,9 @@ networks:
       driver: default
       config:
         - subnet: 192.168.0.0/24
+
+  bub1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24

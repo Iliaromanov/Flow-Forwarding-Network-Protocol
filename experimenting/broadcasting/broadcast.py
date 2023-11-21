@@ -1,4 +1,5 @@
 import socket
+from time import sleep
 
 # Set up a UDP socket
 udp_socket = socket.socket(
@@ -11,18 +12,24 @@ udp_socket.setsockopt(
 )
 
 # Define the broadcast address and port
-broadcast_address = "255.255.255.255"  # This is the broadcast address for most networks
+broadcast_address = "<broadcast>"  # This is the broadcast address for most networks
 broadcast_port = 12345  # Choose whatever port number
 
 # Your message to broadcast
 message = "Hello, this is a broadcast message!"
 
+sleep(2)
 # Send the broadcast message
 udp_socket.sendto(
     message.encode(), 
     (broadcast_address, broadcast_port)
 )
 print(f"Broadcasted message: '{message}'")
+udp_socket.sendto(
+    message.encode(), 
+    (broadcast_address, broadcast_port)
+)
+print(f"AGAIN   Broadcasted message: '{message}'")
 
 message_direct = "this is direct message!"
 

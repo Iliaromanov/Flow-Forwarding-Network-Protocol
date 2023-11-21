@@ -1,0 +1,29 @@
+# Defines a small topology of 3 routers, 5 networks and 2 endpoints
+# docker compose -f compose.yaml --profile routers up -d
+# docker compose -f compose.yaml --profile endpoints --profile routers up -d
+# docker compose -f compose.yaml --profile routers --profile endpoints down -t 1
+services:
+  # try broadcast from router1 to router2 and 3
+  router2:
+    profiles: ["routers"]
+    image: "selfip"
+    build: .
+    volumes:
+      - .:/compnets
+    command: python3 get_ip.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router2
+      SELF_IP: 192.168.0.69
+    networks:
+      stub1:
+        ipv4_address: 192.168.0.69
+
+# 2 Stub networks and 3 transient networks
+networks:
+  stub1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.0.0/24
