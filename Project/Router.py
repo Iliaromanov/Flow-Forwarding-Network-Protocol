@@ -172,6 +172,13 @@ class Router(FlowForwardingProtocolSocketBase):
         del self._fwd_table[dest]
 
         util.Logger.info(f"removed {dest} from fwd table")
+
+        # broadcast to other routers
+        header = {
+            util.PacketDataKey.PACKET_TYPE: util.PacketType.CLEAR_REQUEST,
+            util.PacketDataKey.DEST_ADDR: dest
+        }
+        self.broadcast(header)
     
     # all of this runs in the listen thread
     def handle_received_message(

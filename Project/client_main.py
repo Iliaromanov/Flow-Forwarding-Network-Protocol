@@ -31,7 +31,10 @@ def main():
                     path_to_data = cmd[2]
                 client.send_to(dest, path_to_data)
             case util.Commands.CLEAR.value:
-                client.clear_request()
+                clear_dest = client.addr
+                if len(cmd) > 1:
+                    clear_dest = cmd[1]
+                client.clear_request(clear_dest)
             case util.Commands.EXIT.value:
                 client.clean_exit()
                 exit()

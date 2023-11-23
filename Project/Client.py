@@ -34,12 +34,12 @@ class Client(FlowForwardingProtocolSocketBase):
 
         self._awaiting_response_from.add(dest)
 
-    def clear_request(self) -> None:
+    def clear_request(self, dest_to_clear: str) -> None:
         # requests to clear self from all fwd tables
-        util.Logger.info("sending request to clear self address from fwd tables")
+        util.Logger.info(f"sending request to clear {dest_to_clear} from fwd tables")
         header = {
             util.PacketDataKey.PACKET_TYPE: util.PacketType.CLEAR_REQUEST,
-            util.PacketDataKey.DEST_ADDR: self.addr
+            util.PacketDataKey.DEST_ADDR: dest_to_clear
         }
         self.send(
             header_data=header, 
@@ -142,6 +142,9 @@ class Client(FlowForwardingProtocolSocketBase):
                 )
             case util.PacketType.ANNOUNCE_ENDPOINT.value:
                 # caused by broadcast to self; do nothing
+                pass
+            case util.PacketType.CLEAR_REQUEST.value:
+                # cased by delete broadcast of edge router
                 pass
             case _:
                 util.Logger.error(
