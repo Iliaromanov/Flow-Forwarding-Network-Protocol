@@ -13,6 +13,10 @@ def main():
         f"- {util.Commands.SEND.value} [dest] Optional[path_to_data] - " + \
         "send data located at 'path_to_data' to endpoint with ID 'dest'"
     )
+    print(
+        f"- {util.Commands.CLEAR.value} - " + \
+        "send data located at 'path_to_data' to endpoint with ID 'dest'"
+    )
     print(f"- {util.Commands.EXIT.value} - end program")
 
     while True:
@@ -26,6 +30,8 @@ def main():
                 if len(cmd) > 2:
                     path_to_data = cmd[2]
                 client.send_to(dest, path_to_data)
+            case util.Commands.CLEAR.value:
+                client.clear_request()
             case util.Commands.EXIT.value:
                 client.clean_exit()
                 exit()

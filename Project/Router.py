@@ -161,6 +161,17 @@ class Router(FlowForwardingProtocolSocketBase):
                 sock="listen"    
             )
 
+    def _handle_clear_request(self, dest: str) -> None:
+        if dest not in self._fwd_table:
+            util.Logger.info(
+                f"{dest} not in fwd table; nothing to clear",
+                sock="listen"
+            )
+            return
+        
+        del self._fwd_table[dest]
+
+        util.Logger.info(f"removed {dest} from fwd table")
     
     # all of this runs in the listen thread
     def handle_received_message(
@@ -205,6 +216,14 @@ class Router(FlowForwardingProtocolSocketBase):
                     int(parsed_packet[util.PacketDataKey.HOP_COUNT]),
                     parsed_packet[util.PacketDataKey.BODY],
                     sender_addr[0]
+                )
+            case util.PacketType.CLEAR_REQUEST.value:
+                util.Logger.info(
+                    f"Received clear request packet from {sender_addr[0]}",
+                    sock="listen"
+                )
+                self._handle_clear_request(
+                    parsed_packet[util.PacketDataKey.DEST_ADDR]
                 )
             case _:
                 util.Logger.error(

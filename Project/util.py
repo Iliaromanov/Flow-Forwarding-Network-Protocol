@@ -14,6 +14,7 @@ class PacketType(Enum):
     ANNOUNCE_ENDPOINT_ACK = 1  # the edge router replies with this to let the client know router ip
     FWD_REQUEST           = 2  # can be used for both broadcast and known next hop packets
     FWD_REPLY             = 3  # used as reply to broadcasted forward requests
+    CLEAR_REQUEST         = 4  # used to clear the entry for dest in all fwd tables
 
 
 class PacketDataKey(Enum):
@@ -31,6 +32,7 @@ class FwdTableKey(Enum):
 
 class Commands(Enum):
     SEND = "send_to"
+    CLEAR = "clear_table_info"
     EXIT = "exit"
 
 

@@ -34,6 +34,18 @@ class Client(FlowForwardingProtocolSocketBase):
 
         self._awaiting_response_from.add(dest)
 
+    def clear_request(self) -> None:
+        # requests to clear self from all fwd tables
+        util.Logger.info("sending request to clear self address from fwd tables")
+        header = {
+            util.PacketDataKey.PACKET_TYPE: util.PacketType.CLEAR_REQUEST,
+            util.PacketDataKey.DEST_ADDR: self.addr
+        }
+        self.send(
+            header_data=header, 
+            target_ip=self._edge_router_ip, target_port=util.LISTEN_PORT
+        )
+
     def _attach_to_edge_router(self) -> None:
         # returns addr of edge router
         header = {
@@ -98,7 +110,7 @@ class Client(FlowForwardingProtocolSocketBase):
         self._awaiting_response_from.remove(dest)
 
         util.Logger.info(
-            f"Received reply for dest: {dest}!", sock="listen"
+            f"Received ACK reply for dest: {dest}", sock="listen"
         )
         path_to_dest = " -> ".join(body.split(",")[::-1])
         util.Logger.info(
