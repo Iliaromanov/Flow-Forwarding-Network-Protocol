@@ -1,14 +1,31 @@
-from typing import Dict, Any, Tuple, Union
+from typing import Dict, Any, Tuple, Union, List
 
 import socket
 from abc import ABC, abstractmethod
 import threading
 import struct
+import os
 
 import util
 
 class FlowForwardingProtocolSocketBase(ABC):
-    def __init__(self, listen_timeout: int = util.LISTEN_TIMEOUT) -> None:
+    def __init__(
+        self, listen_timeout: int = util.LISTEN_TIMEOUT
+    ) -> None:
+        env_ips = os.getenv("SELF_IP", "")
+        self._own_ip_addrs = set(env_ips.split(',')) if env_ips else set()
+        # for broadcast IPs, replace the last part of local IP with 255
+        self._broadcast_addrs = set(
+            map(
+                lambda ip : ".".join(ip.split(".")[:-1] + ["255"]), 
+                self._own_ip_addrs
+            )
+        )
+
+        util.Logger.info(f"own IPs: {self._own_ip_addrs}")
+        util.Logger.info(f"broadcast IPs: {self._broadcast_addrs}")
+        
+
         # socket for sending broadcasts, next hop fwd packets, and replies
         self._send_socket = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_DGRAM
@@ -49,11 +66,21 @@ class FlowForwardingProtocolSocketBase(ABC):
     def broadcast(
         self, header_data: Dict[util.PacketDataKey, Any], payload: bytearray = bytearray()
     ) -> None:
-        self.send(
-            header_data, 
-            util.BROADCAST_IP, util.LISTEN_PORT,
-            payload
-        )
+        if len(self._broadcast_addrs) == 0:
+            util.Logger.info("no specified, broadcast addrs; sending to 255.255.255.255")
+            self.send(
+                header_data, 
+                util.BROADCAST_IP, util.LISTEN_PORT,
+                payload
+            )
+            return
+        
+        for ip in self._broadcast_addrs:
+            self.send(
+                header_data, 
+                ip, util.LISTEN_PORT,
+                payload
+            )
 
     def receive(
         self, receive_on_send_socket: bool = False, retry: int = 1
@@ -88,7 +115,7 @@ class FlowForwardingProtocolSocketBase(ABC):
     def _listen(self) -> None:
         while self.listening:
             try:
-                util.Logger.info("listen_socket listening ...")
+                util.Logger.info("listen_socket listening ...", sock="listen")
                 msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
             except socket.timeout:
                 util.Logger.warning(
@@ -96,6 +123,11 @@ class FlowForwardingProtocolSocketBase(ABC):
                 )
                 # timeout to check if thread was asked to stop
                 continue
+
+            if addr[0] in self._own_ip_addrs:
+                util.Logger.info("received packet from self, ignoring", sock="listen")
+                continue
+            
             self.handle_received_message(
                 self._parse_packet(msg), addr
             )
