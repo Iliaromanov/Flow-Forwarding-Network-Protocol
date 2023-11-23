@@ -1,5 +1,6 @@
 from Router import Router
 import util
+import sys
 
 def main():
     router = Router()
@@ -7,7 +8,7 @@ def main():
 
     while True:
         print("-" * 10)
-        cmd = input(f"Type {util.Commands.EXIT.value} to end router program > ").split()
+        cmd = input(f"Type '{util.Commands.EXIT.value}' to end router program \n").split()
         if cmd[0] == util.Commands.EXIT.value:
             router.clean_exit()
             exit()

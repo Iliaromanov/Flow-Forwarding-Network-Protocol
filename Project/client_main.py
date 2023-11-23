@@ -20,13 +20,13 @@ def main():
         cmd = input(f"Client - {addr} - waiting on input ...\n> ").split()
 
         match cmd[0]:
-            case util.Commands.SEND:
+            case util.Commands.SEND.value:
                 dest = cmd[1]
                 path_to_data = ""
                 if len(cmd) > 2:
                     path_to_data = cmd[2]
                 client.send_to(dest, path_to_data)
-            case util.Commands.EXIT:
+            case util.Commands.EXIT.value:
                 client.clean_exit()
                 exit()
             case _:

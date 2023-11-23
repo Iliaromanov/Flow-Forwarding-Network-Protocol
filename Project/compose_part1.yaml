@@ -1,0 +1,108 @@
+
+services:
+  # try broadcast from router1 to router2 and 3
+  router2:
+    profiles: ["routers"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: python3 router_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router2
+      SELF_IP: 192.168.10.21,172.22.0.21
+    networks:
+      edgenet2: 
+        ipv4_address: 192.168.10.21
+      transnet2:
+        ipv4_address: 172.22.0.21
+
+  router3:
+    profiles: ["routers"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: python3 router_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router3
+      SELF_IP: 172.21.0.22,172.22.0.22
+    networks:
+      transnet1:
+        ipv4_address: 172.21.0.22
+      transnet2:
+        ipv4_address: 172.22.0.22
+      
+  router1:
+    profiles: ["routers"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: /bin/bash # python3 router_main.py 172.21.0.255
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: router1
+      SELF_IP: 172.21.0.23,192.168.0.23
+    networks:
+      transnet1:
+        ipv4_address: 172.21.0.23
+      edgenet1:
+        ipv4_address: 192.168.0.23
+
+
+  endpoint1:
+    profiles: ["endpoints"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: /bin/bash # python3 client_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint1
+    networks:
+      - edgenet1
+
+  endpoint2:
+    profiles: ["endpoints"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: ["python3", "client_main.py", "DD:CC:BB:AA"]
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint2
+    networks:
+      - edgenet2
+
+# 2 Stub networks and 3 transient networks
+networks:
+  edgenet1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.0.0/24
+  edgenet2:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.10.0/24
+  transnet1:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+  transnet2:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/24

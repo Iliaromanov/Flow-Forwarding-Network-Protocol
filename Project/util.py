@@ -1,10 +1,8 @@
 from enum import Enum, auto
 
 LOCAL_IP          = "0.0.0.0"
-LOOP_BACK_IP      = "127.0.0.1" # IP addr for sending packet to self
 BROADCAST_IP      = "255.255.255.255"
 DEFAULT_DEST_ADDR = "aaaaaaaa"
-PING_FLAG         = "\\ping" # if packet body starts with ping flag, then do ping op
 LISTEN_PORT       = 12345 # listen for broadcasts, replies on this
 SEND_PORT         = 54321 # port for when send_socket needs to listen (eg use for ACKs)
 BUFFER_SIZE       = 1024
@@ -33,13 +31,13 @@ class FwdTableKey(Enum):
 
 class Commands(Enum):
     SEND = "send_to"
-    EXIT      = "exit"
+    EXIT = "exit"
 
 
 class Logger:
     @staticmethod
-    def info(msg: str) -> None:
-        print(f"- INFO: {msg}")
+    def info(msg: str, sock: str = "main") -> None:
+        print(f"- [{sock}] INFO: {msg}")
     
     @staticmethod
     def critical(msg: str) -> None:

@@ -60,12 +60,12 @@ class Client(FlowForwardingProtocolSocketBase):
 
     def _handle_fwd_request(self, dest: str, body: str) -> None:
         if dest != self.addr:
-            util.Logger.info("Accidental broadcast; ignoring")
+            util.Logger.info("Request to fwd to self; ignoring", sock="listen")
             return
         
         # this client is the destination of a request from another client
-        util.Logger.info(f"Request from other client has reached its destination!")
-        util.Logger.info(f"Received request body: {body}")
+        util.Logger.info(f"Request from other client has reached its destination!", sock="listen")
+        util.Logger.info(f"Received request body: {body}", sock="listen")
         
         # reply to edge router
         header = {
@@ -87,11 +87,11 @@ class Client(FlowForwardingProtocolSocketBase):
 
     def _handle_reply(self, dest: str, body: str) -> None:
         util.Logger.info(
-            f"Received reply for dest: {dest}!"
+            f"Received reply for dest: {dest}!", sock="listen"
         )
         path_to_dest = " -> ".join(body.split(",")[::-1])
         util.Logger.info(
-            f"The path to dest={dest}, is {path_to_dest}"
+            f"The path to dest={dest}, is {path_to_dest}", sock="listen"
         )
 
 
@@ -105,7 +105,7 @@ class Client(FlowForwardingProtocolSocketBase):
                 # could be direct msg from router
                 #  or accidental broadcast (ignore latter)
                 util.Logger.info(
-                    f"Received fwd request packet from {sender_addr[0]}"
+                    f"Received fwd request packet from {sender_addr[0]}", sock="listen"
                 )
                 self._handle_fwd_request(
                     parsed_packet[util.PacketDataKey.DEST_ADDR],
@@ -116,9 +116,12 @@ class Client(FlowForwardingProtocolSocketBase):
                     parsed_packet[util.PacketDataKey.DEST_ADDR],
                     parsed_packet[util.PacketDataKey.BODY]
                 )
+            case util.PacketType.ANNOUNCE_ENDPOINT.value:
+                # caused by broadcast to self; do nothing
+                pass
             case _:
                 util.Logger.error(
-                    f"Client received invalid message type: {packet_type}"
+                    f"Client received invalid message type: {packet_type}",
                 )
 
         return None
