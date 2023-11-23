@@ -115,7 +115,7 @@ class FlowForwardingProtocolSocketBase(ABC):
     def _listen(self) -> None:
         while self.listening:
             try:
-                util.Logger.info("listen_socket listening ...", sock="listen")
+                # util.Logger.info("listen_socket listening ...", sock="listen")
                 msg, addr = self._listen_socket.recvfrom(util.BUFFER_SIZE)
             except socket.timeout:
                 util.Logger.warning(

@@ -38,10 +38,11 @@ class Router(FlowForwardingProtocolSocketBase):
                 "directly forwarding to endpoint",
                 sock="listen"
             )
-            self._fwd_table[dest] = {
-                util.FwdTableKey.NEXT_HOP: None,
-                util.FwdTableKey.HOP_COUNT: None,
-            }
+            if dest not in self._fwd_table:
+                self._fwd_table[dest] = {
+                    util.FwdTableKey.NEXT_HOP: None,
+                    util.FwdTableKey.HOP_COUNT: None,
+                }
             if util.FwdTableKey.REQUESTERS in self._fwd_table[dest]:
                 self._fwd_table[dest][
                     util.FwdTableKey.REQUESTERS
@@ -50,10 +51,10 @@ class Router(FlowForwardingProtocolSocketBase):
                 self._fwd_table[dest][util.FwdTableKey.REQUESTERS] = set(
                     [requesters_ip]
                 )
-                util.Logger.info(
-                    f"requesters: {self._fwd_table[dest][util.FwdTableKey.REQUESTERS]}",
-                    sock="listen"
-                )
+            util.Logger.info(
+                f"requesters: {self._fwd_table[dest][util.FwdTableKey.REQUESTERS]}",
+                sock="listen"
+            )
             self.send(
                 header_data=header,
                 target_ip=self._endpoint_ip,

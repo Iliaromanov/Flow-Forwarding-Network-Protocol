@@ -12,6 +12,7 @@ class Client(FlowForwardingProtocolSocketBase):
         assert(len(self.addr) == 8) # must be of format AAAAAAAA
 
         self._edge_router_ip = None
+        self._awaiting_response_from = set()
         self._attach_to_edge_router()
 
     def send_to(self, dest: str, path_to_data: str = "") -> None:
@@ -30,6 +31,8 @@ class Client(FlowForwardingProtocolSocketBase):
             header_data=header, 
             target_ip=self._edge_router_ip, target_port=util.LISTEN_PORT
         )
+
+        self._awaiting_response_from.add(dest)
 
     def _attach_to_edge_router(self) -> None:
         # returns addr of edge router
@@ -86,12 +89,21 @@ class Client(FlowForwardingProtocolSocketBase):
         )
 
     def _handle_reply(self, dest: str, body: str) -> None:
+        if dest not in self._awaiting_response_from:
+            # util.Logger.info(
+            #     f"received reply for '{dest}', but have already"
+            # )
+            return
+        
+        self._awaiting_response_from.remove(dest)
+
         util.Logger.info(
             f"Received reply for dest: {dest}!", sock="listen"
         )
         path_to_dest = " -> ".join(body.split(",")[::-1])
         util.Logger.info(
-            f"The path to dest={dest}, is {path_to_dest}", sock="listen"
+            f"The path to dest={dest} (from response) is {path_to_dest}", 
+            sock="listen"
         )
 
 
