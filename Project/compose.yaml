@@ -12,9 +12,12 @@ services:
     tty: true
     environment:
       HOSTNAME: router2
+      SELF_IP: 192.168.10.22,172.22.0.22
     networks:
-      - edgenet2
-      - transnet2
+      edgenet2: 
+        ipv4_address: 192.168.10.22
+      transnet1:
+        ipv4_address: 172.21.0.22
 
   router3:
     profiles: ["routers"]
@@ -27,9 +30,30 @@ services:
     tty: true
     environment:
       HOSTNAME: router3
+      SELF_IP: 172.21.0.23,192.168.20.23
     networks:
-      - transnet1
-      - transnet2
+      edgenet3:
+        ipv4_address: 192.168.20.23
+      transnet1:
+        ipv4_address: 172.21.0.23
+
+  router4:
+    profiles: ["routers"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: python3 router_main.py
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: route4
+      SELF_IP: 172.21.0.24,192.168.30.24
+    networks:
+      edgenet3:
+        ipv4_address: 192.168.30.24
+      transnet1:
+        ipv4_address: 172.21.0.24
       
   router1:
     profiles: ["routers"]
@@ -37,14 +61,18 @@ services:
     build: .
     volumes:
       - .:/wrkdir
-    command: /bin/bash # python3 Project/router_main.py
+    command: /bin/bash # python3 router_main.py
     stdin_open: true
     tty: true
     environment:
       HOSTNAME: router1
+      SELF_IP: 172.21.0.21,192.168.0.21
     networks:
-      - transnet1
-      - edgenet1
+      transnet1:
+        ipv4_address: 172.21.0.21
+      edgenet1:
+        ipv4_address: 192.168.0.21
+
 
   endpoint1:
     profiles: ["endpoints"]
@@ -52,7 +80,7 @@ services:
     build: .
     volumes:
       - .:/wrkdir
-    command: /bin/bash # python3 Project/client_main.py
+    command: /bin/bash # python3 client_main.py
     stdin_open: true
     tty: true
     environment:
@@ -74,6 +102,34 @@ services:
     networks:
       - edgenet2
 
+  endpoint3:
+    profiles: ["endpoints"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: ["python3", "client_main.py", "BB:CC:DD:AA"]
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint3
+    networks:
+      - edgenet3
+
+  endpoint4:
+    profiles: ["endpoints"]
+    image: "flowprotocolimage"
+    build: .
+    volumes:
+      - .:/wrkdir
+    command: ["python3", "client_main.py", "CC:DD:AA:BB"]
+    stdin_open: true
+    tty: true
+    environment:
+      HOSTNAME: endpoint4
+    networks:
+      - edgenet4
+
 # 2 Stub networks and 3 transient networks
 networks:
   edgenet1:
@@ -86,18 +142,18 @@ networks:
       driver: default
       config:
         - subnet: 192.168.10.0/24
+  edgenet3:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.20.0/24
+  edgenet4:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.30.0/24
   transnet1:
     ipam:
       driver: default
       config:
         - subnet: 172.21.0.0/24
-  transnet2:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.22.0.0/24
-  transnet3:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.23.0.0/24
