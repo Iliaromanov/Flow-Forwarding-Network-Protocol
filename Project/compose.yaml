@@ -50,7 +50,7 @@ services:
       HOSTNAME: route4
       SELF_IP: 172.21.0.24,192.168.30.24
     networks:
-      edgenet3:
+      edgenet4:
         ipv4_address: 192.168.30.24
       transnet1:
         ipv4_address: 172.21.0.24
