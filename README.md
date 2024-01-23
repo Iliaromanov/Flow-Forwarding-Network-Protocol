@@ -1,6 +1,6 @@
 # Flow-Forwarding-Network-Protocol
 
-A protocol I built on top of UDP for forwarding flows of packets using concepts from Direct Vector Routing to determine routes between senders and destinations. One of the key goals of this protocol was to enable network nodes to send/receive packets between each other without knowing the exact IP addresses of any other node in the network, instead, each node would build local forwarding tables to make routing decisions and forward packet flows toward requested destination nodes based on them.
+A protocol I built on top of UDP for forwarding flows of packets using concepts from Distance Vector Routing to determine routes between senders and destinations. One of the key goals of this protocol was to enable network nodes to send/receive packets between each other without knowing the exact IP addresses of any other node in the network, instead, each node would build local forwarding tables to make routing decisions and forward packet flows toward requested destination nodes based on them.
 
 For a detailed report on the project, my design, and solution, view [DesignReport.pdf](https://github.com/Iliaromanov/Flow-Forwarding-Network-Protocol/blob/main/DesignReport.pdf)
 
